@@ -1,0 +1,212 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.0.6</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>gaming</groupId>
+    <artifactId>dark-souls-remastered-uwyg-qol-edition</artifactId>
+    <version>1.0.0</version>
+    <name>dark-souls-remastered-uwyg-qol-edition</name>
+    <description>Dark Souls Remastered UWYG QoL Edition mod</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <jna.version>5.18.1</jna.version>
+        <maven.compiler.showWarnings>true</maven.compiler.showWarnings>
+        <maven.compiler.compilerArgs>-Xlint:all,-processing</maven.compiler.compilerArgs>
+
+        <!--
+            jpackage configuration. Activated by the `jpackage` profile below.
+
+            * jpackage.app.name      - on-disk name for the bundle and the .exe
+            * jpackage.type          - APP_IMAGE (portable folder + .exe, default)
+                                       or EXE / MSI (Windows installer; EXE/MSI
+                                       requires WiX Toolset on PATH).
+            * jpackage.vendor        - shown in installer / .exe metadata.
+            * jpackage.copyright     - shown in .exe metadata.
+            * jpackage.win.console   - true keeps a console window attached so
+                                       Spring Boot log output is visible.
+        -->
+        <jpackage.app.name>dsr-uwyg-qol-edition</jpackage.app.name>
+        <jpackage.type>APP_IMAGE</jpackage.type>
+        <jpackage.vendor>gaming</jpackage.vendor>
+        <jpackage.copyright>Dark Souls Remastered UWYG QoL Edition mod</jpackage.copyright>
+        <jpackage.win.console>true</jpackage.win.console>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna-platform</artifactId>
+            <version>${jna.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!--
+                Expose absolute jar paths of project dependencies as Maven
+                properties of the form ${groupId:artifactId:type}. Required to
+                resolve ${org.mockito:mockito-core:jar} below.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>resolve-dependency-properties</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!--
+                        Attach Mockito as a Java agent up-front so it does not
+                        self-attach at runtime (silences the inline-mock-maker
+                        self-attach warning and the dynamic Java agent warning).
+                        -Xshare:off disables CDS to silence the "Sharing is
+                        only supported for boot loader classes" warning that
+                        appears when a -javaagent is added on top of the JDK's
+                        default class data sharing archive.
+                    -->
+                    <argLine>-javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!--
+            Build a standalone Windows distribution with jpackage:
+
+                mvnw.cmd -Pjpackage clean package
+
+            Output:
+                target/jpackage/${jpackage.app.name}/${jpackage.app.name}.exe
+                target/jpackage/${jpackage.app.name}/runtime/   (bundled JRE)
+                target/jpackage/${jpackage.app.name}/app/       (Spring Boot fat jar)
+
+            For a Windows installer instead of a portable app-image, pass
+            -Djpackage.type=EXE (requires WiX Toolset 3.x on PATH) or
+            -Djpackage.type=MSI.
+        -->
+        <profile>
+            <id>jpackage</id>
+            <build>
+                <plugins>
+                    <!--
+                        Stage *only* the Spring Boot fat jar in a clean folder
+                        so jpackage does not also bundle target/classes,
+                        test-classes, surefire reports, etc.
+                    -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>stage-jpackage-input</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/jpackage-input</outputDirectory>
+                                    <overwrite>true</overwrite>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.build.directory}</directory>
+                                            <includes>
+                                                <include>${project.build.finalName}.jar</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.panteleyev</groupId>
+                        <artifactId>jpackage-maven-plugin</artifactId>
+                        <version>1.6.5</version>
+                        <executions>
+                            <execution>
+                                <id>build-installer</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jpackage</goal>
+                                </goals>
+                                <configuration>
+                                    <name>${jpackage.app.name}</name>
+                                    <appVersion>${project.version}</appVersion>
+                                    <vendor>${jpackage.vendor}</vendor>
+                                    <copyright>${jpackage.copyright}</copyright>
+                                    <type>${jpackage.type}</type>
+
+                                    <input>${project.build.directory}/jpackage-input</input>
+                                    <destination>${project.build.directory}/jpackage</destination>
+
+                                    <mainJar>${project.build.finalName}.jar</mainJar>
+                                    <!--
+                                        Spring Boot's repackaged fat jar uses its
+                                        own launcher; point jpackage at it
+                                        explicitly instead of relying on the
+                                        manifest (which jpackage warns about).
+                                    -->
+                                    <mainClass>org.springframework.boot.loader.launch.JarLauncher</mainClass>
+
+                                    <winConsole>${jpackage.win.console}</winConsole>
+                                    <!--
+                                        Optional: add <icon>path/to/app.ico</icon>
+                                        here to embed a custom icon in the
+                                        generated .exe.
+                                    -->
+
+                                    <javaOptions>
+                                        <option>-Dfile.encoding=UTF-8</option>
+                                    </javaOptions>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
