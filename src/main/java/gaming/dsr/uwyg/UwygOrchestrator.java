@@ -1,5 +1,7 @@
 package gaming.dsr.uwyg;
 
+import com.sun.jna.platform.win32.Kernel32;
+import com.sun.jna.ptr.IntByReference;
 import gaming.dsr.uwyg.equipment.EquipmentAutoUpgrader;
 import gaming.dsr.uwyg.equipment.EquipmentClassifier;
 import gaming.dsr.uwyg.equipment.types.enums.EquipChangeKind;
@@ -14,8 +16,6 @@ import gaming.dsr.uwyg.inventory.InventorySnapshotReader;
 import gaming.dsr.uwyg.session.UwygSession;
 import gaming.dsr.uwyg.session.UwygSession.Phase;
 import gaming.dsr.uwyg.windows.Win32Constants;
-import com.sun.jna.platform.win32.Kernel32;
-import com.sun.jna.ptr.IntByReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -72,8 +72,8 @@ public final class UwygOrchestrator {
                 if (Kernel32.INSTANCE.GetExitCodeProcess(session.getProcess().getHandle(), exitCode)
                         && exitCode.getValue() != Win32Constants.STILL_ACTIVE) {
 
-                    LOGGER.info("Game closed, going back to search for it");
-                    LOGGER.info("[Close this console if you are done]");
+                    LOGGER.info("Game has been closed, resuming lookup");
+                    LOGGER.info("[Close this window if you are done playing]");
                     session.clearDeathCountTracking();
 
                     achievementsMonitorer.resetStatFileSyncState();
@@ -86,20 +86,20 @@ public final class UwygOrchestrator {
             final Phase currentPhase = session.getPhase();
             if (currentPhase == Phase.FINDING_INV) {
 
-                LOGGER.info("Scanning game to find signature...");
-                final List<Long> inventoryAddress = signatureLocator.findInventorySignatureAddresses(session.getProcess());
+                LOGGER.info("Scanning game to find inventory location...");
+                final List<Long> inventoryAddress = signatureLocator.findInventoryAddresses(session.getProcess());
 
                 if (inventoryAddress.size() > 1) {
 
-                    LOGGER.warn("Multiple signatures found, can't pin down correct address");
+                    LOGGER.warn("Failure to uniquely locate the inventory");
                     sleep(5000);
                 } else if (inventoryAddress.isEmpty()) {
 
-                    LOGGER.warn("No signatures found, can't pin down correct address");
+                    LOGGER.warn("No inventory location found");
                     sleep(5000);
                 } else {
 
-                    LOGGER.info("Unique signature found! Setting everything up");
+                    LOGGER.info("Inventory location found!");
 
                     final GameAddresses mappedAddresses = GameAddresses.fromInventorySignature(inventoryAddress.getFirst());
                     session.setAddresses(mappedAddresses);
@@ -117,26 +117,26 @@ public final class UwygOrchestrator {
                 if (snapshotReader.readInto(session.getProcess(), session.getAddresses().getInventoryBase(), session.getInventory())) {
 
                     session.setPhase(Phase.INV_UPDATE);
-                    LOGGER.info("Initial scan successful");
+                    LOGGER.info("Initial inventory scan successful");
                 } else {
-                    LOGGER.warn("Initial scan failed, trying again");
+                    LOGGER.warn("Initial inventory scan failed, trying again");
                     sleep(1000);
                 }
             } else if (currentPhase == Phase.MAIN_MENU) {
 
                 if (!mainMenuDetector.isMainMenu(session.getProcess(), session.getAddresses())) {
 
-                    LOGGER.info("Going into the game");
+                    LOGGER.info("Opening/Resuming a game run");
                     session.setPhase(Phase.INV_START);
                 } else {
-                    LOGGER.debug("Staring at the main menu");
+                    LOGGER.debug("Displaying title menu");
                     sleep(5000);
                 }
             } else if (currentPhase == Phase.INV_UPDATE) {
 
                 if (mainMenuDetector.isMainMenu(session.getProcess(), session.getAddresses())) {
 
-                    LOGGER.info("Going back to main menu");
+                    LOGGER.info("Going back to title menu");
                     session.setPhase(Phase.MAIN_MENU);
                 } else {
 

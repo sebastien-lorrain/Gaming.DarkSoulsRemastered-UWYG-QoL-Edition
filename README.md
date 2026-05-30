@@ -37,9 +37,9 @@ Active, experimental. Memory layouts are pinned to the current retail build of D
 
 ## Credits
 
-| Name                                        | Contribution                                                                                                | Link                                                |
-|---------------------------------------------|-------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
-| Chainsboyo (modder at Nexus Mods)           | Creator of another auto-equip mod for DSR                                                                   | https://www.nexusmods.com/profile/Chainsboyo        |
-| JKAnderson (DSR Gadget github)              | Cheat Tool whose items database was of a great help to map advanced behaviors for auto-upgrade addition     | https://github.com/JKAnderson/DSR-Gadget            |
-| FrankvdStam (SoulSplitter github)           | Souls games event-based splitter tool for LiveSplit, from which the killed bosses metrics was inspired from | https://github.com/FrankvdStam/SoulSplitter         |
-| FearLess Cheat Engine (DSR cheat community) | Cheat table for DSR, which provided a good head-start for advanced memory exploration                       | https://fearlessrevolution.com/viewtopic.php?t=6856 |
+| Name                                        | Contribution                                                                                                                | Link                                                |
+|---------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
+| Chainsboyo (modder at Nexus Mods)           | Creator of a dedicated auto-equip mod for DSR, which was very helpful <br/> to understand the inventory logic and data structure | https://www.nexusmods.com/profile/Chainsboyo        |
+| JKAnderson (DSR Gadget github)              | Cheat Tool whose items database was of a great help to map advanced behaviors for auto-upgrade addition                     | https://github.com/JKAnderson/DSR-Gadget            |
+| FrankvdStam (SoulSplitter github)           | Souls games event-based splitter tool for LiveSplit, from which the killed bosses metrics was inspired from                 | https://github.com/FrankvdStam/SoulSplitter         |
+| FearLess Cheat Engine (DSR cheat community) | Cheat table for DSR, which provided a good head-start for advanced memory exploration                                       | https://fearlessrevolution.com/viewtopic.php?t=6856 |

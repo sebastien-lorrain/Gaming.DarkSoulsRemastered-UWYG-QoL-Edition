@@ -34,3 +34,6 @@ replay_pid*
 /count_death_cumulative.txt
 /count_death_run.txt
 /count_killed_bosses.txt
+
+# Other documentations
+*.MD

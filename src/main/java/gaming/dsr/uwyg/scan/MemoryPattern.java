@@ -22,6 +22,37 @@ public final class MemoryPattern {
     }
 
     /**
+     * Instruction bytes from the in-game inventory slot access path ({@code mov eax,[rcx+20]} …).
+     * Stable anchor inside {@code DarkSoulsRemastered.exe} for locating nearby global loads.
+     */
+    public static MemoryPattern darkSoulsRemasteredInventoryAnchorInstruction() {
+        final MemoryPattern pattern = new MemoryPattern();
+        // mov eax,[rcx+20]; movaps xmm6,xmm1; mov [rdi],eax; mov rcx,[rcx]; test rcx,rcx; jnz …; jmp …
+        final byte[] rawBytes = new byte[]{
+                (byte) 0x8B, (byte) 0x41, (byte) 0x20,
+                (byte) 0x0F, (byte) 0x28, (byte) 0xF1,
+                (byte) 0x89, (byte) 0x07,
+                (byte) 0x48, (byte) 0x8B, (byte) 0x09,
+                (byte) 0x48, (byte) 0x85, (byte) 0xC9,
+                (byte) 0x75,
+                0,
+                (byte) 0xE9,
+                0, 0, 0, 0
+        };
+        final boolean[] fixed = new boolean[]{
+                true, true, true,
+                true, true, true,
+                true, true,
+                true, true, true,
+                true, true, true,
+                true, false,
+                true, false, false, false, false
+        };
+        pattern.loadRaw(rawBytes, fixed, 1);
+        return pattern;
+    }
+
+    /**
      * Static slot whose value points at player game data.
      */
     public static MemoryPattern darkSoulsRemasteredBaseBInstruction() {
@@ -69,12 +100,27 @@ public final class MemoryPattern {
             final long instructionAddress,
             final byte[] instructionPrefix7
     ) {
+        return ripRelativeMovDispTarget(instructionAddress, instructionPrefix7);
+    }
+
+    /**
+     * Resolves the absolute address of a {@code mov reg, [rip+disp32]} operand (7-byte instruction).
+     */
+    public static long ripRelativeMovDispTarget(
+            final long instructionAddress,
+            final byte[] instructionPrefix7
+    ) {
         if (instructionPrefix7.length < 7) {
             throw new IllegalArgumentException("Need at least 7 instruction bytes");
         }
         final int displacement = ByteBuffer.wrap(instructionPrefix7).order(ByteOrder.LITTLE_ENDIAN).getInt(3);
         final long ripAfterInstruction = instructionAddress + 7;
         return ripAfterInstruction + displacement;
+    }
+
+    /** {@code mod=00}, {@code r/m=101} → RIP-relative addressing on x86-64. */
+    public static boolean isRipRelativeModRm(final byte modRmByte) {
+        return (modRmByte & 0xC7) == 0x05;
     }
 
     private void load(

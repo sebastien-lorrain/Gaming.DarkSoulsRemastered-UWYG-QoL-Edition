@@ -16,7 +16,7 @@ public final class DarkSoulsProcessLocator {
 
     public boolean tryAttachRunningGame(final ProcessBinding outputProcessBinding) {
 
-        LOGGER.info("Trying to find running game");
+        LOGGER.info("Trying to find the running game process");
         final ProcessBinding locatedProcessBinding = findProcess();
 
         if (locatedProcessBinding.getHandle() == null) {
