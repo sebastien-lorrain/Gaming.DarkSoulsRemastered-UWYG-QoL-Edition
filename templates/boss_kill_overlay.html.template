@@ -1,0 +1,141 @@
+<!--
+  Boss kill OBS overlay template (processed at runtime into boss_kill_overlay_EN.html / boss_kill_overlay_FR.html).
+  Read from templates/boss_kill_overlay.html.template in the JVM working directory — if missing, no overlay files are written.
+  Run the .exe or launch.bat from the folder that contains templates/ (or set cwd accordingly).
+
+  Placeholders:
+    {{LANG}}            — html lang attribute (en / fr)
+    {{HEADER_TITLE}}    — header label (filled per locale by Java)
+    {{KILLED_COUNT}}    — number of defeated bosses
+    {{TOTAL_BOSSES}}    — total bosses tracked (26)
+    {{DEFEATED_LABEL}}  — aria-label suffix (defeated / vaincu)
+
+  Repeat block (one row per boss; keep markers intact):
+    {{BOSS_ID}}    — stable boss id (e.g. bell_gargoyles), for CSS / scripting
+    {{BOSS_NAME}}  — boss display name for the locale (HTML-escaped by Java)
+    {{CHECKED}}    — " checked" when defeated, empty otherwise
+-->
+<!DOCTYPE html>
+<html lang="{{LANG}}">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="refresh" content="2">
+  <title>{{HEADER_TITLE}}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+      background: transparent;
+      color: #e8dcc4;
+      padding: 6px 8px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .overlay {
+      display: inline-block;
+      min-width: 260px;
+      max-width: 320px;
+      padding: 10px 12px 12px;
+      border: 1px solid rgba(200, 168, 75, 0.45);
+      border-radius: 4px;
+      background: rgba(12, 10, 8, 0.72);
+      box-shadow: 0 0 18px rgba(0, 0, 0, 0.45);
+    }
+
+    .header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(200, 168, 75, 0.35);
+    }
+
+    .title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #c8a84b;
+    }
+
+    .count {
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      color: #b8aa8a;
+      white-space: nowrap;
+    }
+
+    .boss-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .boss-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 26px;
+      padding: 1px 0;
+      line-height: 1.2;
+    }
+
+    .boss-check {
+      appearance: none;
+      -webkit-appearance: none;
+      flex: 0 0 auto;
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      border: 1.5px solid rgba(184, 170, 138, 0.75);
+      border-radius: 3px;
+      background: rgba(8, 8, 6, 0.65);
+      position: relative;
+      cursor: default;
+    }
+
+    .boss-check:checked {
+      background: #2d8a4e;
+      border-color: #5ecf7a;
+    }
+
+    .boss-check:checked::after {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 4px;
+      height: 8px;
+      border: solid #ffffff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .boss-name {
+      font-size: 12.5px;
+      color: #e8dcc4;
+      letter-spacing: 0.01em;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay">
+    <div class="header">
+      <span class="title">{{HEADER_TITLE}}</span>
+      <span class="count">{{KILLED_COUNT}} / {{TOTAL_BOSSES}}</span>
+    </div>
+    <ul class="boss-list">
+<!-- @repeat boss-item -->
+      <li class="boss-item" id="{{BOSS_ID}}">
+        <input type="checkbox" class="boss-check"{{CHECKED}} disabled aria-label="{{BOSS_NAME}} {{DEFEATED_LABEL}}">
+        <span class="boss-name">{{BOSS_NAME}}</span>
+      </li>
+<!-- @endrepeat -->
+    </ul>
+  </div>
+</body>
+</html>

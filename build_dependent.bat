@@ -18,6 +18,7 @@ set VERSION=%VERSION:dark-souls-remastered-uwyg-qol-edition-=%
 
 rem Copy mandatory resources
 xcopy %BAT_PATH%\batches %BUILD_PATH% /E /I /Y
+xcopy %BAT_PATH%\templates %BUILD_PATH%\templates /E /I /Y
 
 rem Rename files
 for %%i in (%BAT_PATH%\target\*.jar) do copy "%%i" %BUILD_PATH%\dsr-uwyg-qol-edition-runner.jar

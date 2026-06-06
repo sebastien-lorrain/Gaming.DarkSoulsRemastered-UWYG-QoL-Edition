@@ -57,6 +57,13 @@ if /I "%JP_TYPE%"=="APP_IMAGE" (
     exit /b 1
   )
 
+  rem OBS overlay template lives next to the launcher .exe (not under app/ with the jar).
+  xcopy "%BAT_PATH%templates" "!APP_IMAGE_DIR!\templates" /E /I /Y
+  if errorlevel 1 (
+    echo Copying templates into the app-image failed.
+    exit /b 1
+  )
+
   rem Extract version from the fat jar name for the zip filename.
   set "VERSION="
   for %%i in ("%BAT_PATH%target\*.jar") do set "VERSION=%%~ni"

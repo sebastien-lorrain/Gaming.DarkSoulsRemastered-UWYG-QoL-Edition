@@ -2,6 +2,8 @@ package gaming.dsr.uwyg.game.data;
 
 import gaming.dsr.uwyg.game.GameConstants;
 import gaming.dsr.uwyg.game.MainExecutableModuleLocator;
+import gaming.dsr.uwyg.game.data.keyitem.ItemLotPickupIndex;
+import gaming.dsr.uwyg.game.data.keyitem.KeyItemLocationTally;
 import gaming.dsr.uwyg.scan.MemoryPattern;
 import gaming.dsr.uwyg.scan.ProcessMemoryScanner;
 import gaming.dsr.uwyg.windows.ProcessBinding;
@@ -19,7 +21,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -29,15 +30,19 @@ import java.util.Optional;
 @Component
 public class AchievementsMonitorer {
     private static final Logger LOGGER = LoggerFactory.getLogger(AchievementsMonitorer.class);
-    private static final Path CUMULATIVE_DEATH_COUNT_FILE = Path.of("count_death_cumulative.txt");
-    private static final Path RUN_DEATH_COUNT_FILE = Path.of("count_death_run.txt");
+    private static final Path DEATH_COUNT_FILE = Path.of("count_death.txt");
     private static final Path KILLED_BOSSES_FILE = Path.of("count_killed_bosses.txt");
+    private static final Path KEY_ITEM_LOCATIONS_COUNT_FILE = Path.of("count_key_item_locations.txt");
 
     private final ProcessMemoryScanner memoryScanner;
     private final Win32GameMemory gameMemory;
 
-    private int lastSyncedCumulativeDeathCount = -1;
+    private int lastSyncedDeathCount = -1;
     private int lastSyncedBossKillCount = -1;
+    private List<String> lastSyncedKilledBossIds = List.of();
+    private int lastSyncedKeyItemLocationOpenCount = -1;
+    private ItemLotPickupIndex cachedPickupIndex;
+    private long cachedGameParamModifiedEpochMillis = -1L;
 
     public AchievementsMonitorer(
             final ProcessMemoryScanner memoryScanner,
@@ -49,62 +54,84 @@ public class AchievementsMonitorer {
 
     /** Resets cached values so the next attach rewrites death/boss files from live memory. */
     public synchronized void resetStatFileSyncState() {
-        lastSyncedCumulativeDeathCount = -1;
+        lastSyncedDeathCount = -1;
         lastSyncedBossKillCount = -1;
+        lastSyncedKilledBossIds = List.of();
+        lastSyncedKeyItemLocationOpenCount = -1;
+        cachedPickupIndex = null;
+        cachedGameParamModifiedEpochMillis = -1L;
     }
 
     /**
-     * Keeps {@code count_death_cumulative.txt} aligned with the live game stat whenever it changes
-     * (not only on death).
+     * Keeps {@code count_death.txt} aligned with the live in-game death stat whenever it changes.
      */
-    public synchronized void syncCumulativeDeathFileFromGameIfNeeded(final int deathNum) {
+    public synchronized void syncDeathRunFileFromGameIfNeeded(final int deathNum) {
 
-        if (lastSyncedCumulativeDeathCount != -1 && Integer.compareUnsigned(deathNum, lastSyncedCumulativeDeathCount) == 0) {
+        if (lastSyncedDeathCount != -1 && Integer.compareUnsigned(deathNum, lastSyncedDeathCount) == 0) {
             return;
         }
 
         try {
-            writeIntegerFile(CUMULATIVE_DEATH_COUNT_FILE, Integer.toUnsignedLong(deathNum));
-            lastSyncedCumulativeDeathCount = deathNum;
+            writeIntegerFile(DEATH_COUNT_FILE, Integer.toUnsignedLong(deathNum));
+            lastSyncedDeathCount = deathNum;
         } catch (final IOException exception) {
-            LOGGER.error("Failed to sync {}", CUMULATIVE_DEATH_COUNT_FILE.toAbsolutePath(), exception);
+            LOGGER.error("Failed to sync {}", DEATH_COUNT_FILE.toAbsolutePath(), exception);
         }
     }
 
     /**
-     * Writes {@code count_killed_bosses.txt} as a single decimal integer when the defeated-boss total changes.
+     * Writes {@code count_killed_bosses.txt} when defeated-boss progress changes, and EN/FR overlay HTML when
+     * {@code templates/boss_kill_overlay.html.template} exists in the JVM working directory.
      */
     public synchronized void syncKilledBossesFileFromGameIfNeeded(final BossKillProgression.BossKillTally tally) {
 
-        if (lastSyncedBossKillCount != -1 && tally.total() == lastSyncedBossKillCount) {
+        if (lastSyncedBossKillCount != -1 && tally.killedBossIds().equals(lastSyncedKilledBossIds)) {
             return;
         }
-        final String namesJoined =
-                tally.killedBossNames().isEmpty() ? "(none)" : String.join(", ", tally.killedBossNames());
+        final String namesJoined = tally.killedBossIds().isEmpty()
+                ? "(none)"
+                : String.join(", ", tally.killedBossIds().stream()
+                        .map(BossKillProgression::englishNameForId)
+                        .toList());
         LOGGER.info("{} (bosses read as killed: {})", tally.total(), namesJoined);
 
         try {
             writeIntegerFile(KILLED_BOSSES_FILE, Integer.toUnsignedLong(tally.total()));
+            if (!BossKillProgression.writeBossKillOverlaysIfTemplatePresent(tally)) {
+                LOGGER.debug(
+                        "Boss kill overlay template not found at {}; skipping HTML output",
+                        BossKillProgression.overlayTemplatePath().toAbsolutePath());
+            }
             lastSyncedBossKillCount = tally.total();
+            lastSyncedKilledBossIds = tally.killedBossIds();
         } catch (final IOException exception) {
-            LOGGER.error("Failed to sync {}", KILLED_BOSSES_FILE.toAbsolutePath(), exception);
+            LOGGER.error("Failed to sync boss kill files in {}", Path.of(".").toAbsolutePath(), exception);
         }
     }
 
     /**
-     * Creates counter files as {@code 0} when missing so they exist under the JVM working directory.
+     * Creates progress counter files and overlay HTML as zero/empty when missing.
      */
     @PostConstruct
-    public void ensureDeathCountFilesInitialized() {
+    public void ensureProgressFilesInitialized() {
         try {
-            if (!Files.exists(RUN_DEATH_COUNT_FILE)) {
-                writeIntegerFile(RUN_DEATH_COUNT_FILE, 0L);
-            }
-            if (!Files.exists(CUMULATIVE_DEATH_COUNT_FILE)) {
-                writeIntegerFile(CUMULATIVE_DEATH_COUNT_FILE, 0L);
+            if (!Files.exists(DEATH_COUNT_FILE)) {
+                writeIntegerFile(DEATH_COUNT_FILE, 0L);
             }
             if (!Files.exists(KILLED_BOSSES_FILE)) {
                 writeIntegerFile(KILLED_BOSSES_FILE, 0L);
+            }
+            if (!Files.exists(KEY_ITEM_LOCATIONS_COUNT_FILE)) {
+                writeIntegerFile(KEY_ITEM_LOCATIONS_COUNT_FILE, 0L);
+            }
+            if (BossKillProgression.isOverlayTemplatePresent()) {
+                BossKillProgression.writeBossKillOverlaysIfTemplatePresent(
+                        new BossKillProgression.BossKillTally(0, List.of()));
+            }
+            if (KeyItemLocationProgression.isOverlayTemplatePresent()) {
+                KeyItemLocationProgression.writeOverlaysIfTemplatePresent(
+                        new KeyItemLocationTally(0, KeyItemLocationCatalog.locationCount(), List.of()),
+                        null);
             }
         } catch (final IOException exception) {
             LOGGER.error("Could not initialize stat files in {}", Path.of(".").toAbsolutePath(), exception);
@@ -230,21 +257,103 @@ public class AchievementsMonitorer {
             final long eventFlagsBase
     ) {
 
-        final List<String> killedNames = new ArrayList<>();
+        final List<String> killedIds = new ArrayList<>();
 
-        for (final Map.Entry<String, Integer> entry : BossKillProgression.BOSS_DEFEATED_EVENT_FLAGS.entrySet()) {
+        for (final BossKillProgression.BossDefinition boss : BossKillProgression.BOSSES) {
             final BossKillProgression.EventFlagWord word =
-                    BossKillProgression.decodeEventFlag(entry.getValue());
+                    BossKillProgression.decodeEventFlag(boss.eventFlagId());
             final Integer leWord = gameMemory.readUInt32(process, eventFlagsBase + word.byteOffset());
             if (leWord == null) {
                 continue;
             }
             if ((leWord & word.mask()) != 0) {
-                killedNames.add(entry.getKey());
+                killedIds.add(boss.id());
             }
         }
 
-        return new BossKillProgression.BossKillTally(killedNames.size(), List.copyOf(killedNames));
+        return new BossKillProgression.BossKillTally(killedIds.size(), List.copyOf(killedIds));
+    }
+
+    /**
+     * Writes {@code count_key_item_locations.txt}, logs the opened count, and refreshes overlay HTML when it changes.
+     */
+    public synchronized void syncKeyItemLocationsFromGameIfNeeded(
+            final ProcessBinding process,
+            final long eventFlagsBase
+    ) {
+
+        final ItemLotPickupIndex pickupIndex = resolvePickupIndex(process);
+        final KeyItemLocationTally tally =
+                tallyOpenedKeyItemLocations(process, eventFlagsBase, pickupIndex);
+
+        if (lastSyncedKeyItemLocationOpenCount != -1 && tally.openedCount() == lastSyncedKeyItemLocationOpenCount) {
+            return;
+        }
+
+        LOGGER.info("Key item locations opened: {}/{}", tally.openedCount(), tally.totalCount());
+
+        try {
+            writeIntegerFile(KEY_ITEM_LOCATIONS_COUNT_FILE, Integer.toUnsignedLong(tally.openedCount()));
+            if (!KeyItemLocationProgression.writeOverlaysIfTemplatePresent(tally, pickupIndex)) {
+                LOGGER.debug(
+                        "Key item location overlay template not found at {}; skipping HTML output",
+                        KeyItemLocationProgression.overlayTemplatePath().toAbsolutePath());
+            }
+            lastSyncedKeyItemLocationOpenCount = tally.openedCount();
+        } catch (final IOException exception) {
+            LOGGER.error("Failed to sync key item files in {}", Path.of(".").toAbsolutePath(), exception);
+        }
+    }
+
+    public KeyItemLocationTally tallyOpenedKeyItemLocations(
+            final ProcessBinding process,
+            final long eventFlagsBase,
+            final ItemLotPickupIndex pickupIndex
+    ) {
+
+        return KeyItemLocationProgression.tallyOpenedLocations(
+                byteOffset -> gameMemory.readUInt32(process, eventFlagsBase + byteOffset),
+                pickupIndex);
+    }
+
+    private synchronized ItemLotPickupIndex resolvePickupIndex(final ProcessBinding process) {
+
+        final Optional<Path> installDirectory =
+                MainExecutableModuleLocator.findGameInstallDirectory(process);
+        if (installDirectory.isEmpty()) {
+            LOGGER.debug("Game install directory unavailable; key item flags not loaded");
+            return null;
+        }
+        final Optional<Path> gameParamFile =
+                MainExecutableModuleLocator.findGameParamFile(installDirectory.get());
+        if (gameParamFile.isEmpty()) {
+            LOGGER.warn(
+                    "GameParam.parambnd.dcx not found under {}; key item locations cannot be tracked",
+                    installDirectory.get());
+            return null;
+        }
+        try {
+            final long modified = Files.getLastModifiedTime(gameParamFile.get()).toMillis();
+            if (cachedPickupIndex != null && modified == cachedGameParamModifiedEpochMillis) {
+                return cachedPickupIndex;
+            }
+            final Optional<ItemLotPickupIndex> loaded =
+                    ItemLotPickupIndex.loadForCatalog(gameParamFile.get());
+            if (loaded.isEmpty()) {
+                LOGGER.warn("ItemLotParam.param missing or unreadable in {}", gameParamFile.get());
+                return null;
+            }
+            cachedPickupIndex = loaded.get();
+            cachedGameParamModifiedEpochMillis = modified;
+            LOGGER.info(
+                    "Loaded {} trackable key item pickup flags from {}",
+                    cachedPickupIndex.trackableLocationCount(),
+                    gameParamFile.get());
+            return cachedPickupIndex;
+        } catch (final IOException exception) {
+            LOGGER.error("Failed to read {}", gameParamFile.get(), exception);
+            return null;
+        }
     }
 
     /** Read a 32-bit little-endian value from {@code playerGameDataBase + offsetFromBase}. */
@@ -254,41 +363,6 @@ public class AchievementsMonitorer {
             final long offsetFromBase
     ) {
         return gameMemory.readUInt32(process, playerGameDataBase + offsetFromBase);
-    }
-
-    /**
-     * Bumps {@code count_death_run.txt}; cumulative totals are kept by {@link #syncCumulativeDeathFileFromGameIfNeeded}.
-     * Logs the in-game cumulative value (unsigned uint32) immediately before touching the run file.
-     */
-    public synchronized void recordDeathCountIncrease(final int deathCountBits) {
-
-        LOGGER.info("Death increased; in-game cumulative deaths (uint32): {}", Integer.toUnsignedLong(deathCountBits));
-
-        try {
-            final long previousRun = readRunDeathCountFromFile();
-            writeIntegerFile(RUN_DEATH_COUNT_FILE, previousRun + 1);
-        } catch (final IOException exception) {
-            LOGGER.error("Failed to update {}", RUN_DEATH_COUNT_FILE.toAbsolutePath(), exception);
-        }
-    }
-
-    private static long readRunDeathCountFromFile() throws IOException {
-
-        if (!Files.exists(RUN_DEATH_COUNT_FILE)) {
-            return 0L;
-        }
-
-        final String raw = Files.readString(RUN_DEATH_COUNT_FILE, StandardCharsets.UTF_8).trim();
-        if (raw.isEmpty()) {
-            return 0L;
-        }
-
-        try {
-            return Long.parseUnsignedLong(raw);
-        } catch (final NumberFormatException exception) {
-            LOGGER.warn("Ignoring invalid contents in {} ({}), treating run count as 0", RUN_DEATH_COUNT_FILE, raw);
-            return 0L;
-        }
     }
 
     /** Uses the JDK default options (create or truncate, then write) — avoids fragile option combos on Windows. */

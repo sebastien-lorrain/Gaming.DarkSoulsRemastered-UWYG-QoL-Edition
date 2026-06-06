@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Component
 public final class UwygOrchestrator {
@@ -34,8 +33,6 @@ public final class UwygOrchestrator {
     private final EquipmentClassifier equipmentClassifier;
     private final EquipmentAutoUpgrader memoryEquipper;
     private final AchievementsMonitorer achievementsMonitorer;
-
-    private long lastDeathPollingTimeNanos;
 
     public UwygOrchestrator(
             final DarkSoulsProcessLocator processLocator,
@@ -140,7 +137,7 @@ public final class UwygOrchestrator {
                     session.setPhase(Phase.MAIN_MENU);
                 } else {
 
-                    pollDeathCount(session);
+                    pollProgression(session);
 
                     if (!snapshotReader.readInto(session.getProcess(), session.getAddresses().getInventoryBase(), session.getInventoryCopy())) {
                         LOGGER.warn("Inventory update failed, trying again");
@@ -165,13 +162,21 @@ public final class UwygOrchestrator {
         }
     }
 
-    private void pollDeathCount(final UwygSession session) {
+    private void pollProgression(final UwygSession session) {
 
         final Long worldProgressionFlags = session.getWorldProgressionFlags();
 
         if (worldProgressionFlags != null) {
             achievementsMonitorer.syncKilledBossesFileFromGameIfNeeded(
-                    achievementsMonitorer.tallyKilledBosses(session.getProcess(), worldProgressionFlags));
+                    achievementsMonitorer.tallyKilledBosses(
+                            session.getProcess(),
+                            worldProgressionFlags
+                    )
+            );
+            achievementsMonitorer.syncKeyItemLocationsFromGameIfNeeded(
+                    session.getProcess(),
+                    worldProgressionFlags
+            );
         } else {
             achievementsMonitorer.syncKilledBossesFileFromGameIfNeeded(
                     new BossKillProgression.BossKillTally(0, List.of()));
@@ -188,18 +193,7 @@ public final class UwygOrchestrator {
             return;
         }
 
-        achievementsMonitorer.syncCumulativeDeathFileFromGameIfNeeded(deathNum);
-        final long now = System.nanoTime();
-        if (lastDeathPollingTimeNanos == 0L || now - lastDeathPollingTimeNanos >= TimeUnit.SECONDS.toNanos(2L)) {
-            lastDeathPollingTimeNanos = now;
-        }
-
-        final Integer previous = session.getLastObservedDeathCount();
-        session.setLastObservedDeathCount(deathNum);
-
-        if (previous != null && Integer.compareUnsigned(deathNum, previous) > 0) {
-            achievementsMonitorer.recordDeathCountIncrease(deathNum);
-        }
+        achievementsMonitorer.syncDeathRunFileFromGameIfNeeded(deathNum);
     }
 
     private static void sleep(final long millis) {

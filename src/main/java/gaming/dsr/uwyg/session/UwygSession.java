@@ -28,12 +28,10 @@ public final class UwygSession {
 
     private Long playerGameData;
     private Long worldProgressionFlags;
-    private Integer lastObservedDeathCount;
 
     public void clearDeathCountTracking() {
         playerGameData = null;
         worldProgressionFlags = null;
-        lastObservedDeathCount = null;
     }
 
     public void resetInventorySnapshots() {

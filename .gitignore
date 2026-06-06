@@ -31,9 +31,9 @@ replay_pid*
 /.idea/
 
 # Project-specific
-/count_death_cumulative.txt
-/count_death_run.txt
+/count_death.txt
 /count_killed_bosses.txt
+/count_key_item_locations.txt
 
 # Other documentations
 *.MD
