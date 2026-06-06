@@ -12,13 +12,14 @@
 
     <groupId>gaming</groupId>
     <artifactId>dark-souls-remastered-uwyg-qol-edition</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <name>dark-souls-remastered-uwyg-qol-edition</name>
     <description>Dark Souls Remastered UWYG QoL Edition mod</description>
 
     <properties>
         <java.version>21</java.version>
         <jna.version>5.18.1</jna.version>
+        <commons-text.version>1.13.0</commons-text.version>
         <maven.compiler.showWarnings>true</maven.compiler.showWarnings>
         <maven.compiler.compilerArgs>-Xlint:all,-processing</maven.compiler.compilerArgs>
 
@@ -45,6 +46,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>${commons-text.version}</version>
         </dependency>
         <dependency>
             <groupId>net.java.dev.jna</groupId>
