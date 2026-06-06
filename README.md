@@ -14,6 +14,7 @@ Then based on acceptation (for fairness and adequacy with the spirit of the chal
 - Automatically equips the newly-picked weapon, shield, armor, ring, or spell in the appropriate slot.
 - Brings the equipped piece up to a fair reinforcement level based on the rest of the loadout (see [AUTO-UPGRADE.md](AUTO-UPGRADE.md) for the exact rules).
 - Tracks deaths and boss kills in plain text files next to the executable for streaming overlays to easily use (such as OBS).
+- Generates HTML files for boss kills and item key locations (customizable templates), which can be used as overlays directly in OBS.
 
 The tool runs alongside the game as a separate process and communicates with it through memory reads/writes — no game files are modified.
 
@@ -37,9 +38,11 @@ Active, experimental. Memory layouts are pinned to the current retail build of D
 
 ## Credits
 
-| Name                                        | Contribution                                                                                                                | Link                                                |
-|---------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
-| Chainsboyo (modder at Nexus Mods)           | Creator of a dedicated auto-equip mod for DSR, which was very helpful <br/> to understand the inventory logic and data structure | https://www.nexusmods.com/profile/Chainsboyo        |
-| JKAnderson (DSR Gadget github)              | Cheat Tool whose items database was of a great help to map advanced behaviors for auto-upgrade addition                     | https://github.com/JKAnderson/DSR-Gadget            |
-| FrankvdStam (SoulSplitter github)           | Souls games event-based splitter tool for LiveSplit, from which the killed bosses metrics was inspired from                 | https://github.com/FrankvdStam/SoulSplitter         |
-| FearLess Cheat Engine (DSR cheat community) | Cheat table for DSR, which provided a good head-start for advanced memory exploration                                       | https://fearlessrevolution.com/viewtopic.php?t=6856 |
+| Name                                        | Contribution                                                                                                                             | Link                                                      |
+|---------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
+| Chainsboyo (modder at Nexus Mods)           | Creator of a dedicated auto-equip mod for DSR, which was very helpful <br/> to understand the inventory logic and data structure         | https://www.nexusmods.com/profile/Chainsboyo              |
+| JKAnderson (DSR Gadget github)              | Cheat Tool whose items database was of a great help to map advanced behaviors for auto-upgrade addition                                  | https://github.com/JKAnderson/DSR-Gadget                  |
+| FrankvdStam (SoulSplitter github)           | Souls games event-based splitter tool for LiveSplit, from which the killed bosses metrics was inspired from                              | https://github.com/FrankvdStam/SoulSplitter               |
+| FearLess Cheat Engine (DSR cheat community) | Cheat table for DSR, which provided a good head-start for advanced memory exploration                                                    | https://fearlessrevolution.com/viewtopic.php?t=6856       |
+| AO_Fishbrain (Twitch streamer)              | List of key item locations and their IDs, to implement the item key locations overlay                                                    | https://www.twitch.tv/ao_fishbrain                        |
+| DarkSoulsItemRandomizer (randomizing mod)   | Scrutiny of how the game parameters are scrambled by this mod, helped a lot to implement a key item locations overlay compatible with it | https://github.com/HotPocketRemix/DarkSoulsItemRandomizer |
