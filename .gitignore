@@ -34,6 +34,11 @@ replay_pid*
 /count_death.txt
 /count_killed_bosses.txt
 /count_key_item_locations.txt
+/boss_kill_overlay_EN.html
+/boss_kill_overlay_FR.html
+/key_item_location_overlay_EN.html
+/key_item_location_overlay_FR.html
 
 # Other documentations
 *.MD
+/INVESTIG
