@@ -12,6 +12,7 @@ import java.util.Optional;
 public final class EquipmentDefinitionTables {
 
     public static final int BASE_ITEM_ID_MELEE_PARRYING_DAGGER = 101000;
+    public static final int BASE_ITEM_ID_MELEE_DARK_HAND = 904000;
     public static final int BASE_ITEM_ID_SHIELD_SKULL_LANTERN = 1396000;
     public static final int BASE_ITEM_ID_RING_COVENANT_OF_ARTORIAS = 138;
     public static final int BASE_ITEM_ID_RING_ORANGE_CHARRED = 139;
@@ -346,7 +347,7 @@ public final class EquipmentDefinitionTables {
         put(melee, EquipmentCategory.MELEE_WEAPON, 901000, 1, ItemUpgradePath.INFUSABLE, "Caestus");
         put(melee, EquipmentCategory.MELEE_WEAPON, 902000, 1, ItemUpgradePath.INFUSABLE, "Claw");
         put(melee, EquipmentCategory.MELEE_WEAPON, 903000, 1, ItemUpgradePath.UNIQUE, "Dragon Bone Fist");
-        put(melee, EquipmentCategory.MELEE_WEAPON, 904000, 1, ItemUpgradePath.NONE, "Dark Hand");
+        put(melee, EquipmentCategory.MELEE_WEAPON, BASE_ITEM_ID_MELEE_DARK_HAND, 1, ItemUpgradePath.NONE, "Dark Hand");
         put(melee, EquipmentCategory.MELEE_WEAPON, 1000000, 1, ItemUpgradePath.INFUSABLE, "Spear");
         put(melee, EquipmentCategory.MELEE_WEAPON, 1001000, 1, ItemUpgradePath.INFUSABLE, "Winged Spear");
         put(melee, EquipmentCategory.MELEE_WEAPON, 1002000, 1, ItemUpgradePath.INFUSABLE, "Partizan");

@@ -1,391 +1,200 @@
 <!--
-
   Key item location OBS overlay (key_item_location_overlay_EN.html / _FR.html).
-
   Reloads every 2s. Full location list in 4 columns (no scroll target: 720p).
 
-
-
   Placeholders: {{LANG}}, {{HEADER_TITLE}}, {{OPENED_COUNT}}, {{TOTAL_LOCATIONS}}, {{OPENED_LABEL}}
-
   Area: {{AREA_ID}}, {{AREA_NAME}}, {{AREA_OPENED_COUNT}}, {{AREA_TOTAL_COUNT}}
-
   Location: {{LOCATION_ID}}, {{LOCATION_LABEL}}, {{CHECKED}}, {{UNTRACKED_CLASS}}
-
 -->
 
 <!DOCTYPE html>
-
 <html lang="{{LANG}}">
-
 <head>
-
   <meta charset="UTF-8">
-
   <meta http-equiv="refresh" content="2">
-
   <title>{{HEADER_TITLE}}</title>
-
   <style>
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-
-
     html, body {
-
       height: 100%;
-
       background: transparent;
-
       overflow: hidden;
-
     }
-
-
 
     body {
-
       font-family: "Segoe UI", "Palatino Linotype", "Book Antiqua", Palatino, serif;
-
       color: #e8dcc4;
-
       padding: 4px 6px;
-
       -webkit-font-smoothing: antialiased;
-
     }
-
-
 
     .overlay {
-
       display: inline-flex;
-
       flex-direction: column;
-
       max-width: min(1240px, calc(100vw - 12px));
-
       max-height: calc(100vh - 12px);
-
       border: 1px solid rgba(200, 168, 75, 0.45);
-
       border-radius: 4px;
-
       background: rgba(12, 10, 8, 0.78);
-
       box-shadow: 0 0 18px rgba(0, 0, 0, 0.45);
-
       overflow: hidden;
-
     }
-
-
 
     .header {
-
       flex: 0 0 auto;
-
       display: flex;
-
       align-items: baseline;
-
       justify-content: space-between;
-
       gap: 12px;
-
       padding: 8px 10px 5px;
-
       border-bottom: 1px solid rgba(200, 168, 75, 0.35);
-
     }
-
-
 
     .title {
-
       font-size: 13px;
-
       font-weight: 600;
-
       letter-spacing: 0.06em;
-
       text-transform: uppercase;
-
       color: #c8a84b;
-
     }
-
-
 
     .count {
-
       font-size: 12px;
-
       font-variant-numeric: tabular-nums;
-
       color: #b8aa8a;
-
       white-space: nowrap;
-
     }
-
-
 
     .content-columns {
-
       flex: 1 1 auto;
-
       min-height: 0;
-
       padding: 6px 8px 8px;
-
       overflow: hidden;
-
       column-count: 4;
-
       column-gap: 10px;
-
       column-fill: balance;
-
     }
-
-
 
     .area-group {
-
       break-inside: avoid;
-
       -webkit-column-break-inside: avoid;
-
       page-break-inside: avoid;
-
       margin-bottom: 8px;
-
     }
-
-
 
     .area-name {
-
       font-size: 10px;
-
       font-weight: 600;
-
       letter-spacing: 0.04em;
-
       text-transform: uppercase;
-
       color: #a89050;
-
       margin-bottom: 3px;
-
       padding-bottom: 2px;
-
       border-bottom: 1px solid rgba(168, 144, 80, 0.25);
-
       line-height: 1.2;
-
     }
-
-
 
     .area-name .area-count {
-
       font-weight: 500;
-
       color: #b8aa8a;
-
       text-transform: none;
-
       letter-spacing: 0;
-
     }
-
-
 
     .location-list {
-
       list-style: none;
-
       display: flex;
-
       flex-direction: column;
-
       gap: 1px;
-
     }
-
-
 
     .location-item {
-
       display: flex;
-
       align-items: center;
-
       gap: 5px;
-
       min-height: 17px;
-
       padding: 0;
-
       line-height: 1.15;
-
     }
-
-
 
     .location-item.not-checkable .location-check {
-
       opacity: 0.35;
-
       border-style: dashed;
-
       cursor: not-allowed;
-
       pointer-events: none;
-
     }
-
-
 
     .location-item.not-checkable .location-label {
-
       color: #9a8f78;
-
       font-style: italic;
-
     }
-
-
 
     .location-check {
-
       appearance: none;
-
       -webkit-appearance: none;
-
       flex: 0 0 auto;
-
       width: 12px;
-
       height: 12px;
-
       margin: 0;
-
       border: 1.5px solid rgba(184, 170, 138, 0.75);
-
       border-radius: 2px;
-
       background: rgba(8, 8, 6, 0.65);
-
       position: relative;
-
       cursor: default;
-
     }
-
-
 
     .location-check:checked {
-
       background: #2d8a4e;
-
       border-color: #5ecf7a;
-
     }
-
-
 
     .location-check:checked::after {
-
       content: "";
-
       position: absolute;
-
       left: 3px;
-
       top: 1px;
-
       width: 3px;
-
       height: 6px;
-
       border: solid #ffffff;
-
       border-width: 0 1.5px 1.5px 0;
-
       transform: rotate(45deg);
-
     }
 
-
-
     .location-label {
-
       flex: 1;
-
       min-width: 0;
-
       font-size: 10.5px;
-
       color: #e8dcc4;
-
     }
 
   </style>
 
 </head>
-
 <body>
-
   <div class="overlay">
-
     <div class="header">
-
       <span class="title">{{HEADER_TITLE}}</span>
-
       <span class="count">{{OPENED_COUNT}} / {{TOTAL_LOCATIONS}}</span>
-
     </div>
-
     <div class="content-columns">
-
 <!-- @repeat area-group -->
-
       <section class="area-group" data-area="{{AREA_ID}}">
-
         <h2 class="area-name">{{AREA_NAME}} <span class="area-count">{{AREA_OPENED_COUNT}}/{{AREA_TOTAL_COUNT}}</span></h2>
-
         <ul class="location-list">
-
 <!-- @repeat location-item -->
-
           <li class="location-item{{UNTRACKED_CLASS}}" id="{{LOCATION_ID}}">
-
             <input type="checkbox" class="location-check"{{CHECKED}} disabled
-
                    aria-label="{{LOCATION_LABEL}} {{OPENED_LABEL}}">
-
             <span class="location-label">{{LOCATION_LABEL}}</span>
-
           </li>
-
 <!-- @endrepeat -->
-
         </ul>
-
       </section>
-
 <!-- @endrepeat -->
-
     </div>
-
   </div>
-
 </body>
-
 </html>
 
 

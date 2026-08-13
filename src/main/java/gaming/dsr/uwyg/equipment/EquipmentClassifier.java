@@ -1,5 +1,6 @@
 package gaming.dsr.uwyg.equipment;
 
+import gaming.dsr.uwyg.equipment.definition.BossSoulWeaponTranspositions;
 import gaming.dsr.uwyg.equipment.definition.EquipmentDefinitionTables;
 import gaming.dsr.uwyg.equipment.equivalence.ArmorUpgradeEquivalence;
 import gaming.dsr.uwyg.equipment.equivalence.WeaponUpgradeEquivalence;
@@ -176,8 +177,12 @@ public final class EquipmentClassifier {
     }
 
     private static boolean isSpecialLeftHandMeleeWeapon(final BaseEquipmentDefinition equipmentDefinition) {
-        return equipmentDefinition.category() == EquipmentCategory.MELEE_WEAPON
-                && equipmentDefinition.baseItemId() == EquipmentDefinitionTables.BASE_ITEM_ID_MELEE_PARRYING_DAGGER;
+        if (equipmentDefinition.category() != EquipmentCategory.MELEE_WEAPON) {
+            return false;
+        }
+        final int baseItemId = equipmentDefinition.baseItemId();
+        return baseItemId == EquipmentDefinitionTables.BASE_ITEM_ID_MELEE_PARRYING_DAGGER
+                || baseItemId == EquipmentDefinitionTables.BASE_ITEM_ID_MELEE_DARK_HAND;
     }
 
     private static WeaponType rangedSlotKind(final int baseItemId) {
@@ -234,8 +239,10 @@ public final class EquipmentClassifier {
     ) {
         final long baseUnsigned = Integer.toUnsignedLong(equipmentDefinition.baseItemId());
         return switch (equipmentDefinition.upgradePath()) {
-            case NONE -> rawUnsigned == baseUnsigned;
-            case UNIQUE -> rawUnsigned >= baseUnsigned && rawUnsigned <= baseUnsigned + 5;
+            case NONE -> rawUnsigned == baseUnsigned
+                    || BossSoulWeaponTranspositions.isTransposedVariant(baseUnsigned, rawUnsigned);
+            case UNIQUE -> (rawUnsigned >= baseUnsigned && rawUnsigned <= baseUnsigned + 5)
+                    || BossSoulWeaponTranspositions.isTransposedVariant(baseUnsigned, rawUnsigned);
             case INFUSABLE, INFUSABLE_RESTRICTED -> matchesInfusable(equipmentDefinition, rawUnsigned, baseUnsigned);
             case STANDARD_ARMOR ->
                     rawUnsigned >= baseUnsigned && rawUnsigned <= baseUnsigned + 10;

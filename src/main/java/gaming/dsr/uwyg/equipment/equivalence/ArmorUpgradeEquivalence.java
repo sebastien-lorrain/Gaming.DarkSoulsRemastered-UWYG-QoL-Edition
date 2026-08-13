@@ -16,16 +16,17 @@ import gaming.dsr.uwyg.equipment.types.enums.ItemUpgradePath;
  * <p><strong>STANDARD_ARMOR</strong> (max {@code upgradeLevel} 10):
  *
  * <pre>
- * +0           → equivalentArmorTier 0 (same as UNIQUE +0)
- * +1, +2       → equivalentArmorTier 1 (same as UNIQUE +1)
- * +3, +4       → equivalentArmorTier 2
- * +5, +6       → equivalentArmorTier 3
- * +7, +8, +9   → equivalentArmorTier 4
+ * +0, +1       → equivalentArmorTier 0 (same as UNIQUE +0)
+ * +2, +3       → equivalentArmorTier 1 (same as UNIQUE +1)
+ * +4, +5       → equivalentArmorTier 2
+ * +6, +7       → equivalentArmorTier 3
+ * +8, +9       → equivalentArmorTier 4
  * +10          → equivalentArmorTier 5 (same as UNIQUE +5)
  * </pre>
  *
- * <p>When encoding a target {@code equivalentArmorTier} back to a STANDARD id, the <em>highest</em> {@code upgradeLevel}
- * in each equivalent armor tier band is used (+2, +4, +6, +9, +10).
+ * <p>The reverse direction is a UNIQUE→STANDARD_ARMOR conversion: because the {@code equivalentArmorTier} is the
+ * UNIQUE/twinkling scale (tier equals UNIQUE {@code upgradeLevel}), a tier converts to the STANDARD_ARMOR
+ * {@code upgradeLevel} of the same strength — UNIQUE +N becomes STANDARD_ARMOR +2N (+0, +2, +4, +6, +8, +10).
  */
 public final class ArmorUpgradeEquivalence {
 
@@ -69,12 +70,12 @@ public final class ArmorUpgradeEquivalence {
         return switch (equipmentDefinition.upgradePath()) {
             case UNIQUE -> (int) (baseItemIdUnsigned + clampedTargetEquivalentArmorTier);
             case STANDARD_ARMOR -> {
-                final int standardArmorBandMaximumUpgradeLevel =
-                        maximumStandardArmorUpgradeLevelForEquivalentArmorTier(clampedTargetEquivalentArmorTier);
+                final int convertedStandardArmorUpgradeLevel =
+                        standardArmorUpgradeLevelForEquivalentArmorTier(clampedTargetEquivalentArmorTier);
                 final int catalogMaximumUpgradeLevel =
                         EquipmentClassifier.maximumUpgradeLevel(equipmentDefinition);
                 final int appliedStandardArmorUpgradeLevel =
-                        Math.min(standardArmorBandMaximumUpgradeLevel, catalogMaximumUpgradeLevel);
+                        Math.min(convertedStandardArmorUpgradeLevel, catalogMaximumUpgradeLevel);
                 yield (int) (baseItemIdUnsigned + appliedStandardArmorUpgradeLevel);
             }
             default -> equipmentDefinition.baseItemId();
@@ -82,21 +83,21 @@ public final class ArmorUpgradeEquivalence {
     }
 
     /**
-     * Maps STANDARD {@code upgradeLevel} +0…+10 to {@code equivalentArmorTier} +0…+5 (inverse:
-     * {@link #maximumStandardArmorUpgradeLevelForEquivalentArmorTier}).
+     * Maps STANDARD {@code upgradeLevel} +0…+10 to {@code equivalentArmorTier} +0…+5 (reverse:
+     * {@link #standardArmorUpgradeLevelForEquivalentArmorTier}).
      */
     private static int standardArmorUpgradeLevelToEquivalentArmorTier(final int upgradeLevel) {
         final int clampedUpgradeLevel = Math.clamp(upgradeLevel, 0, 10);
-        if (clampedUpgradeLevel == 0) {
+        if (clampedUpgradeLevel <= 1) {
             return 0;
         }
-        if (clampedUpgradeLevel <= 2) {
+        if (clampedUpgradeLevel <= 3) {
             return 1;
         }
-        if (clampedUpgradeLevel <= 4) {
+        if (clampedUpgradeLevel <= 5) {
             return 2;
         }
-        if (clampedUpgradeLevel <= 6) {
+        if (clampedUpgradeLevel <= 7) {
             return 3;
         }
         if (clampedUpgradeLevel <= 9) {
@@ -105,8 +106,8 @@ public final class ArmorUpgradeEquivalence {
         return 5;
     }
 
-    /** Highest STANDARD {@code upgradeLevel} in the band for {@code targetEquivalentArmorTier} (0…5). */
-    private static int maximumStandardArmorUpgradeLevelForEquivalentArmorTier(
+    /** STANDARD_ARMOR {@code upgradeLevel} a tier converts to: UNIQUE +N → STANDARD_ARMOR +2N (tier 0…5). */
+    private static int standardArmorUpgradeLevelForEquivalentArmorTier(
             final int targetEquivalentArmorTier
     ) {
         final int clampedTargetEquivalentArmorTier = Math.clamp(targetEquivalentArmorTier, 0, MAXIMUM_EQUIVALENT_ARMOR_TIER);
@@ -115,7 +116,7 @@ public final class ArmorUpgradeEquivalence {
             case 1 -> 2;
             case 2 -> 4;
             case 3 -> 6;
-            case 4 -> 9;
+            case 4 -> 8;
             default -> 10;
         };
     }

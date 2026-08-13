@@ -128,22 +128,22 @@ Always projects to `0`.
 
 | `upgradeLevel` band | `equivalentArmorTier` |
 |---------------------|----------------------:|
-| +0                  |                     0 |
-| +1, +2              |                     1 |
-| +3, +4              |                     2 |
-| +5, +6              |                     3 |
-| +7, +8, +9          |                     4 |
+| +0, +1              |                     0 |
+| +2, +3              |                     1 |
+| +4, +5              |                     2 |
+| +6, +7              |                     3 |
+| +8, +9              |                     4 |
 | +10                 |                     5 |
 
-### 3.4 Inverse mapping for `STANDARD_ARMOR`
+### 3.4 `UNIQUE` → `STANDARD_ARMOR` conversion
 
-When the auto-upgrader needs to **encode** a target tier back to an item id, it picks the **highest** `upgradeLevel` inside the band (so the wearer keeps every cumulative bonus the band offers):
+To pick a `STANDARD_ARMOR` item id for a target tier, the auto-upgrader converts the tier (which is the `UNIQUE`/twinkling scale) to the `STANDARD_ARMOR` `upgradeLevel` of the same strength: a `UNIQUE` +N becomes `STANDARD_ARMOR` +2N.
 
-| Target `equivalentArmorTier` | Encoded `upgradeLevel` |
-|------------------------------|-----------------------:|
-| 0                            |                     +0 |
-| 1                            |                     +2 |
-| 2                            |                     +4 |
-| 3                            |                     +6 |
-| 4                            |                     +9 |
-| 5                            |                    +10 |
+| Target `equivalentArmorTier` | `STANDARD_ARMOR` `upgradeLevel` |
+|------------------------------|--------------------------------:|
+| 0                            |                              +0 |
+| 1                            |                              +2 |
+| 2                            |                              +4 |
+| 3                            |                              +6 |
+| 4                            |                              +8 |
+| 5                            |                             +10 |

@@ -35,22 +35,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  *     +3  → 3      +4  → 4      +5  → 5      (identity)
  *
  * STANDARD_ARMOR (max upgradeLevel 10) — banded:
- *     +0           → 0
- *     +1, +2       → 1
- *     +3, +4       → 2
- *     +5, +6       → 3
- *     +7, +8, +9   → 4
+ *     +0, +1       → 0
+ *     +2, +3       → 1
+ *     +4, +5       → 2
+ *     +6, +7       → 3
+ *     +8, +9       → 4
  *     +10          → 5
  * </pre>
  *
- * <h2>Inverse mapping (equivalentArmorTier → STANDARD_ARMOR upgradeLevel)</h2>
+ * <h2>UNIQUE → STANDARD_ARMOR conversion (equivalentArmorTier → STANDARD_ARMOR upgradeLevel)</h2>
  *
- * When picking a STANDARD_ARMOR item id for a target tier, the <em>highest</em> upgrade level inside
- * the band is used so the player keeps every cumulative bonus the band confers:
+ * To pick a STANDARD_ARMOR item id for a target tier, the tier (the UNIQUE/twinkling scale) is converted
+ * to the STANDARD_ARMOR upgrade level of the same strength — UNIQUE +N becomes STANDARD_ARMOR +2N:
  *
  * <pre>
  *     tier 0 → +0     tier 1 → +2     tier 2 → +4
- *     tier 3 → +6     tier 4 → +9     tier 5 → +10
+ *     tier 3 → +6     tier 4 → +8     tier 5 → +10
  * </pre>
  *
  * <h2>Cross-type upgrade-path consistency</h2>
@@ -63,19 +63,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * </pre>
  *
  * <p>given a peer on {@code sourcePath} at every valid {@code upgradeLevel} (yielding ceiling tier T),
- * encoding the target item id for tier T must satisfy:
+ * deriving the target item id for tier T must satisfy:
  *
  * <ol>
  *   <li>chosen target {@code upgradeLevel} projects to a tier ≤ T (never overshoots the peer)</li>
  *   <li>chosen target tier == min(T, target's own max tier) — fills as much of T as path allows</li>
- *   <li>for STANDARD_ARMOR targets, chosen upgrade level is the band <em>maximum</em>
- *       (the +2 / +4 / +6 / +9 / +10 endpoints), never a lower band member</li>
- *   <li>for NONE targets, no upgrade is encoded (catalogId stays at baseItemId)</li>
+ *   <li>for STANDARD_ARMOR targets, chosen upgrade level is the UNIQUE→STANDARD_ARMOR conversion
+ *       (+0 / +2 / +4 / +6 / +8 / +10), i.e. +2N for tier N</li>
+ *   <li>for NONE targets, no upgrade is applied (catalogId stays at baseItemId)</li>
  * </ol>
  *
  * <p>This guarantees a UNIQUE armor at +N (tier N) and a STANDARD_ARMOR peer arrive at the same
  * equivalent armor tier on the shared scale, and the auto-upgrade target item id matches the
- * band-maximum reinforcement that fits below that ceiling.
+ * STANDARD_ARMOR upgrade level that tier converts to.
  */
 class ArmorUpgradeEquivalenceTest {
 
@@ -143,14 +143,14 @@ class ArmorUpgradeEquivalenceTest {
 
     @ParameterizedTest(name = "STANDARD_ARMOR +{0} → equivalentArmorTier {1}")
     @CsvSource({
-        "0,0",
-        "1,1", "2,1",
-        "3,2", "4,2",
-        "5,3", "6,3",
-        "7,4", "8,4", "9,4",
+        "0,0", "1,0",
+        "2,1", "3,1",
+        "4,2", "5,2",
+        "6,3", "7,3",
+        "8,4", "9,4",
         "10,5"
     })
-    @DisplayName("STANDARD_ARMOR: banded mapping (1-2 → 1, 3-4 → 2, 5-6 → 3, 7-8-9 → 4, 10 → 5)")
+    @DisplayName("STANDARD_ARMOR: banded mapping (0-1 → 0, 2-3 → 1, 4-5 → 2, 6-7 → 3, 8-9 → 4, 10 → 5)")
     void equivalentArmorTier_standardArmor_followsBandMapping(
             final int upgradeLevel,
             final int expectedTier
@@ -193,17 +193,17 @@ class ArmorUpgradeEquivalenceTest {
     }
 
     @ParameterizedTest(name = "STANDARD_ARMOR target tier {0} → catalogId baseItemId + {1}")
-    @CsvSource({"0,0", "1,2", "2,4", "3,6", "4,9", "5,10"})
-    @DisplayName("catalogItemIdForEquivalentArmorTier STANDARD_ARMOR: baseItemId + band-max upgradeLevel")
-    void catalogItemIdForEquivalentArmorTier_standardArmor_picksBandMaximum(
+    @CsvSource({"0,0", "1,2", "2,4", "3,6", "4,8", "5,10"})
+    @DisplayName("catalogItemIdForEquivalentArmorTier STANDARD_ARMOR: baseItemId + converted upgradeLevel (+2N)")
+    void catalogItemIdForEquivalentArmorTier_standardArmor_convertsTierToUpgradeLevel(
             final int targetTier,
-            final int expectedBandMaximumUpgradeLevel
+            final int expectedConvertedUpgradeLevel
     ) {
         final int catalogId =
                 ArmorUpgradeEquivalence.catalogItemIdForEquivalentArmorTier(
                         STANDARD_ARMOR_DEFINITION, targetTier);
         assertEquals(
-                BASE_ITEM_ID_STANDARD_ARMOR_BRIGAND_HOOD + expectedBandMaximumUpgradeLevel, catalogId);
+                BASE_ITEM_ID_STANDARD_ARMOR_BRIGAND_HOOD + expectedConvertedUpgradeLevel, catalogId);
     }
 
     @ParameterizedTest(name = "NONE target tier {0} → catalogId stays at baseItemId")
@@ -237,21 +237,21 @@ class ArmorUpgradeEquivalenceTest {
 
     /**
      * Cross-type contract test. For every ordered pair (sourceSample, targetDescriptor) across the
-     * armor upgrade-path cross-product, encoding the target's catalog item id for the source's
+     * armor upgrade-path cross-product, deriving the target's catalog item id for the source's
      * equivalent armor tier must:
      *
      * <ul>
      *   <li>not exceed the peer's ceiling tier when re-projected</li>
      *   <li>match min(ceilingTier, target's own maximum tier) exactly (we always lift the target
      *       as high as its path allows)</li>
-     *   <li>encode to baseItemId for NONE targets (no offset)</li>
-     *   <li>encode to baseItemId + band-max upgrade level for STANDARD_ARMOR targets</li>
-     *   <li>encode to baseItemId + chosenTier for UNIQUE targets (identity-tier mapping)</li>
+     *   <li>resolve to baseItemId for NONE targets (no offset)</li>
+     *   <li>resolve to baseItemId + converted upgrade level for STANDARD_ARMOR targets (+2N for tier N)</li>
+     *   <li>resolve to baseItemId + chosenTier for UNIQUE targets (identity-tier mapping)</li>
      * </ul>
      */
     @ParameterizedTest(name = "{0}  →  target {1}")
     @MethodSource("crossArmorPathPairs")
-    @DisplayName("Cross-type: target catalog id matches band-maximum upgradeLevel that fits peer's equivalentArmorTier")
+    @DisplayName("Cross-type: target catalog id matches converted STANDARD_ARMOR upgradeLevel that fits peer's equivalentArmorTier")
     void crossUpgradePath_targetAtOrBelowPeerTier(
             final ArmorPathSample sourceSample,
             final ArmorPathTarget targetDescriptor
@@ -260,21 +260,21 @@ class ArmorUpgradeEquivalenceTest {
         final int targetMaximumTier = targetDescriptor.maximumEquivalentArmorTier();
         final int expectedTargetTier = Math.min(peerCeilingTier, targetMaximumTier);
 
-        final int encodedCatalogItemId =
+        final int resolvedCatalogItemId =
                 ArmorUpgradeEquivalence.catalogItemIdForEquivalentArmorTier(
                         targetDescriptor.definition(), peerCeilingTier);
-        final int encodedUpgradeLevel = encodedCatalogItemId - targetDescriptor.baseItemId();
-        final int projectedTier = targetDescriptor.projectUpgradeLevelToTier(encodedUpgradeLevel);
+        final int resolvedUpgradeLevel = resolvedCatalogItemId - targetDescriptor.baseItemId();
+        final int projectedTier = targetDescriptor.projectUpgradeLevelToTier(resolvedUpgradeLevel);
 
         assertEquals(
                 expectedTargetTier,
                 projectedTier,
                 () -> "target "
                         + targetDescriptor
-                        + " encoded for peer ceiling "
+                        + " resolved for peer ceiling "
                         + peerCeilingTier
                         + " yielded upgradeLevel +"
-                        + encodedUpgradeLevel
+                        + resolvedUpgradeLevel
                         + " (projected tier "
                         + projectedTier
                         + "), expected min(peerCeiling, targetMax) = "
@@ -282,15 +282,15 @@ class ArmorUpgradeEquivalenceTest {
 
         assertEquals(
                 targetDescriptor.expectedUpgradeLevelForTier(expectedTargetTier),
-                encodedUpgradeLevel,
+                resolvedUpgradeLevel,
                 () -> "target "
                         + targetDescriptor
                         + " for tier "
                         + expectedTargetTier
-                        + " should encode upgradeLevel +"
+                        + " should resolve to upgradeLevel +"
                         + targetDescriptor.expectedUpgradeLevelForTier(expectedTargetTier)
-                        + " (band-max), but got +"
-                        + encodedUpgradeLevel);
+                        + " (UNIQUE→STANDARD_ARMOR conversion), but got +"
+                        + resolvedUpgradeLevel);
     }
 
     static Stream<Arguments> crossArmorPathPairs() {
@@ -310,7 +310,7 @@ class ArmorUpgradeEquivalenceTest {
         for (int upgradeLevel = 0; upgradeLevel <= 5; upgradeLevel++) {
             samples.add(new ArmorPathSample("UNIQUE+" + upgradeLevel, upgradeLevel));
         }
-        final int[] standardArmorBandMaximums = {0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5};
+        final int[] standardArmorBandMaximums = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5};
         for (int upgradeLevel = 0; upgradeLevel <= 10; upgradeLevel++) {
             samples.add(
                     new ArmorPathSample(
@@ -358,7 +358,7 @@ class ArmorUpgradeEquivalenceTest {
                         STANDARD_ARMOR_DEFINITION,
                         BASE_ITEM_ID_STANDARD_ARMOR_BRIGAND_HOOD,
                         5) {
-                    private final int[] bandMaximumUpgradeLevels = {0, 2, 4, 6, 9, 10};
+                    private final int[] standardArmorUpgradeLevelByTier = {0, 2, 4, 6, 8, 10};
 
                     @Override
                     int projectUpgradeLevelToTier(final int upgradeLevel) {
@@ -368,7 +368,7 @@ class ArmorUpgradeEquivalenceTest {
 
                     @Override
                     int expectedUpgradeLevelForTier(final int targetTier) {
-                        return bandMaximumUpgradeLevels[targetTier];
+                        return standardArmorUpgradeLevelByTier[targetTier];
                     }
                 });
     }

@@ -1,17 +1,20 @@
 package gaming.dsr.uwyg.equipment;
 
+import gaming.dsr.uwyg.equipment.definition.BossSoulWeaponTranspositions;
 import gaming.dsr.uwyg.equipment.types.BaseEquipmentDefinition;
 import gaming.dsr.uwyg.equipment.types.InventorySlot;
-import gaming.dsr.uwyg.inventory.InventorySnapshotReader;
 import gaming.dsr.uwyg.equipment.types.enums.*;
+import gaming.dsr.uwyg.inventory.InventorySnapshotReader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -189,6 +192,158 @@ class EquipmentClassifierTest {
                 EquipmentClassifier.resolveToDefinition(999_999, ItemType.WEAPON).isPresent());
     }
 
+    /** Inclusive id range, stepped by 100, as delivered for a transposed boss-soul weapon. */
+    private record IdRange(int min, int max) {}
+
+    private record BossWeaponEntry(
+            int baseId,
+            String name,
+            EquipmentCategory category,
+            WeaponType expectedSlot,
+            List<IdRange> ranges
+    ) {
+        int overallMax() {
+            return ranges.stream().mapToInt(IdRange::max).max().orElse(baseId);
+        }
+    }
+
+    /**
+     * Each boss-soul weapon and the full id range(s) its transposed reward can occupy. The ranges mirror the
+     * pools the item randomizer draws from; the lowest id of each pool is the catalogue base weapon.
+     */
+    private static List<BossWeaponEntry> bossWeaponEntries() {
+        return List.of(
+                new BossWeaponEntry(406000, "Quelaag's Furysword", EquipmentCategory.MELEE_WEAPON, WeaponType.RIGHT_HAND,
+                        List.of(new IdRange(406000, 406500))),
+                new BossWeaponEntry(503000, "Chaos Blade", EquipmentCategory.MELEE_WEAPON, WeaponType.RIGHT_HAND,
+                        List.of(new IdRange(503000, 503200))),
+                new BossWeaponEntry(307000, "Greatsword of Artorias", EquipmentCategory.MELEE_WEAPON, WeaponType.RIGHT_HAND,
+                        List.of(new IdRange(307000, 307100))),
+                new BossWeaponEntry(311000, "Greatsword of Artorias (Cursed)", EquipmentCategory.MELEE_WEAPON, WeaponType.RIGHT_HAND,
+                        List.of(new IdRange(311000, 312700))),
+                new BossWeaponEntry(314000, "Great Lord Greatsword", EquipmentCategory.MELEE_WEAPON, WeaponType.RIGHT_HAND,
+                        List.of(new IdRange(314000, 315700))),
+                new BossWeaponEntry(1507000, "Greatshield of Artorias", EquipmentCategory.SHIELD, WeaponType.LEFT_HAND,
+                        List.of(new IdRange(1507000, 1510600))),
+                new BossWeaponEntry(704000, "Golem Axe", EquipmentCategory.MELEE_WEAPON, WeaponType.RIGHT_HAND,
+                        List.of(new IdRange(704000, 704600))),
+                new BossWeaponEntry(903000, "Dragon Bone Fist", EquipmentCategory.MELEE_WEAPON, WeaponType.RIGHT_HAND,
+                        List.of(new IdRange(903000, 903100))),
+                new BossWeaponEntry(1051000, "Dragonslayer Spear", EquipmentCategory.MELEE_WEAPON, WeaponType.RIGHT_HAND,
+                        List.of(new IdRange(1051000, 1051900), new IdRange(1054000, 1054000))),
+                new BossWeaponEntry(1052000, "Moonlight Butterfly Horn", EquipmentCategory.MELEE_WEAPON, WeaponType.RIGHT_HAND,
+                        List.of(new IdRange(1052000, 1053000))),
+                new BossWeaponEntry(1411000, "Crystal Ring Shield", EquipmentCategory.SHIELD, WeaponType.LEFT_HAND,
+                        List.of(new IdRange(1411000, 1414600))),
+                new BossWeaponEntry(856000, "Smough's Hammer", EquipmentCategory.MELEE_WEAPON, WeaponType.RIGHT_HAND,
+                        List.of(new IdRange(856000, 857100))),
+                new BossWeaponEntry(1151000, "Lifehunt Scythe", EquipmentCategory.MELEE_WEAPON, WeaponType.RIGHT_HAND,
+                        List.of(new IdRange(1151000, 1151800))),
+                new BossWeaponEntry(1205000, "Darkmoon Bow", EquipmentCategory.RANGED_WEAPON, WeaponType.LEFT_HAND,
+                        List.of(new IdRange(1205000, 1205300))),
+                new BossWeaponEntry(1304000, "Tin Darkmoon Catalyst", EquipmentCategory.SPELL_TOOL, WeaponType.LEFT_HAND,
+                        List.of(new IdRange(1304000, 1304500))),
+                new BossWeaponEntry(9012000, "Abyss Greatsword", EquipmentCategory.MELEE_WEAPON, WeaponType.RIGHT_HAND,
+                        List.of(new IdRange(9012000, 9012800), new IdRange(9013000, 9013700))),
+                new BossWeaponEntry(9017000, "Manus Catalyst", EquipmentCategory.SPELL_TOOL, WeaponType.LEFT_HAND,
+                        List.of(new IdRange(9017000, 9017500))));
+    }
+
+    static Stream<Arguments> bossWeaponInRangeCases() {
+        return bossWeaponEntries().stream()
+                .flatMap(entry -> entry.ranges().stream()
+                        .flatMap(range -> IntStream.iterate(range.min(), id -> id <= range.max(), id -> id + 100)
+                                .boxed()
+                                .map(id -> Arguments.of(id, entry.baseId(), entry.name(), entry.category()))));
+    }
+
+    static Stream<Arguments> bossWeaponSlotCases() {
+        return bossWeaponEntries().stream()
+                .map(entry -> Arguments.of(entry.baseId(), entry.name(), entry.expectedSlot()));
+    }
+
+    static Stream<Arguments> bossWeaponBeyondRangeCases() {
+        return bossWeaponEntries().stream()
+                .map(entry -> Arguments.of(entry.overallMax() + 100, entry.baseId(), entry.name()));
+    }
+
+    @ParameterizedTest(name = "{2}: transposed id {0} → base {1}")
+    @MethodSource("bossWeaponInRangeCases")
+    void resolveToDefinition_transposedBossWeaponInRange_resolvesToBase(
+            final int rawId,
+            final int baseId,
+            final String name,
+            final EquipmentCategory expectedCategory
+    ) {
+        final Optional<BaseEquipmentDefinition> definition =
+                EquipmentClassifier.resolveToDefinition(rawId, ItemType.WEAPON);
+        assertTrue(definition.isPresent(), name + " transposed id " + rawId + " should resolve");
+        assertEquals(baseId, definition.get().baseItemId(), name + " transposed id " + rawId);
+        assertEquals(expectedCategory, definition.get().category());
+    }
+
+    @ParameterizedTest(name = "{1} base+100 → {2}")
+    @MethodSource("bossWeaponSlotCases")
+    void weaponTypeFromId_transposedBossWeaponInRange_returnsCorrectSlot(
+            final int baseId,
+            final String name,
+            final WeaponType expectedSlot
+    ) {
+        assertEquals(
+                expectedSlot,
+                resolver.weaponTypeFromId(baseId + 100, ItemType.WEAPON),
+                name);
+    }
+
+    @ParameterizedTest(name = "{2}: id {0} just past range → not base {1}")
+    @MethodSource("bossWeaponBeyondRangeCases")
+    void resolveToDefinition_transposedBossWeaponBeyondRange_doesNotResolveToSameBase(
+            final int rawId,
+            final int baseId,
+            final String name
+    ) {
+        final Optional<BaseEquipmentDefinition> definition =
+                EquipmentClassifier.resolveToDefinition(rawId, ItemType.WEAPON);
+        assertTrue(
+                definition.map(d -> d.baseItemId() != baseId).orElse(true),
+                name + " id " + rawId + " (just past its transposition range) must not resolve to the same base weapon");
+    }
+
+    @Test
+    void resolveToDefinition_nonBossNonePathWeapon_doesNotMatchInfusionStyleOffset() {
+        // Crystal Shield (1471000, NONE) is not a boss-soul weapon: a +100 offset must not resolve to it.
+        final Optional<BaseEquipmentDefinition> definition =
+                EquipmentClassifier.resolveToDefinition(1471000 + 100, ItemType.WEAPON);
+        assertTrue(
+                definition.map(d -> d.baseItemId() != 1471000).orElse(true),
+                "Non-boss NONE-path weapon must not match a transposition-style offset");
+    }
+
+    @Test
+    void resolveToDefinition_nonBossUniquePathWeapon_doesNotMatchOffsetBeyondFive() {
+        // Crest Shield (1456000, UNIQUE) is not a boss-soul weapon: only +0..+5 resolve, not a +100 offset.
+        final Optional<BaseEquipmentDefinition> definition =
+                EquipmentClassifier.resolveToDefinition(1456000 + 100, ItemType.WEAPON);
+        assertTrue(
+                definition.map(d -> d.baseItemId() != 1456000).orElse(true),
+                "Non-boss UNIQUE-path weapon must not match a transposition-style offset");
+    }
+
+    @Test
+    void bossSoulWeaponTranspositions_acceptsWholeStep100RangeAndRejectsOutOfRange() {
+        assertTrue(BossSoulWeaponTranspositions.isTransposedVariant(1051000, 1051000), "range minimum");
+        assertTrue(BossSoulWeaponTranspositions.isTransposedVariant(1051000, 1051900), "range maximum");
+        assertTrue(BossSoulWeaponTranspositions.isTransposedVariant(1051000, 1054000), "trailing standalone id");
+        assertFalse(BossSoulWeaponTranspositions.isTransposedVariant(1051000, 1054100), "above all ranges");
+        assertFalse(BossSoulWeaponTranspositions.isTransposedVariant(1051000, 1051050), "not a step of 100");
+        assertFalse(BossSoulWeaponTranspositions.isTransposedVariant(1051000, 1052000), "belongs to another weapon");
+    }
+
+    @Test
+    void bossSoulWeaponTranspositions_nonBossWeapon_returnsFalse() {
+        assertFalse(BossSoulWeaponTranspositions.isTransposedVariant(1471000, 1471100));
+    }
+
     @Test
     void resolveToDefinition_ringWithUnknownId_returnsEmpty() {
         assertFalse(EquipmentClassifier.resolveToDefinition(1234, ItemType.RING).isPresent());
@@ -333,6 +488,7 @@ class EquipmentClassifierTest {
         return Stream.of(
                 Arguments.of(BASE_ITEM_ID_SHORTSWORD, ItemType.WEAPON, WeaponType.RIGHT_HAND),
                 Arguments.of(BASE_ITEM_ID_PARRYING_DAGGER, ItemType.WEAPON, WeaponType.LEFT_HAND),
+                Arguments.of(BASE_ITEM_ID_DARK_HAND, ItemType.WEAPON, WeaponType.LEFT_HAND),
                 Arguments.of(BASE_ITEM_ID_EAST_WEST_SHIELD, ItemType.WEAPON, WeaponType.LEFT_HAND),
                 Arguments.of(BASE_ITEM_ID_SHORT_BOW, ItemType.WEAPON, WeaponType.LEFT_HAND),
                 Arguments.of(BASE_ITEM_ID_STANDARD_ARROW, ItemType.WEAPON, WeaponType.ARROW),
@@ -578,7 +734,7 @@ class EquipmentClassifierTest {
     }
 
     @Test
-    void encodeArmorMemoryIdForEquivalentTier_standardArmor_usesBandMaximumUpgradeLevel() {
+    void encodeArmorMemoryIdForEquivalentTier_standardArmor_convertsTierToUpgradeLevel() {
         final BaseEquipmentDefinition brigandHood =
                 new BaseEquipmentDefinition(
                         BASE_ITEM_ID_BRIGAND_HOOD,
@@ -587,7 +743,7 @@ class EquipmentClassifierTest {
                         EquipmentCategory.ARMOR,
                         "Brigand Hood");
         assertEquals(
-                BASE_ITEM_ID_BRIGAND_HOOD + 9,
+                BASE_ITEM_ID_BRIGAND_HOOD + 8,
                 EquipmentClassifier.encodeArmorMemoryIdForEquivalentTier(
                         brigandHood, 4, ItemType.ARMOR));
     }
